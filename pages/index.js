@@ -185,6 +185,9 @@ export default function Survey() {
             <div className="space-y-6">
               <div>
                 <h1 className="text-2xl font-semibold text-slate-800 mb-2">Where are we with AI?</h1>
+                <p className="text-slate-600 text-sm leading-relaxed mb-3">
+                  Like many associations, ASAE sees AI as a transformational opportunity requiring careful consideration for beneficial implementation. Things are changing rapidly, and all of us are at different stages of awareness, use, and comfort.
+                </p>
                 <p className="text-slate-500 text-sm leading-relaxed">
                   This survey helps us understand where our organization stands — not to evaluate individuals, but to shape how we invest in learning, tools, and support. There are no right answers. Honest responses are far more useful than optimistic ones.
                 </p>
