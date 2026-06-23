@@ -159,20 +159,20 @@ export default function Survey() {
       <div className="min-h-screen bg-slate-50" ref={topRef}>
         {/* Header */}
         <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
-          <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <img src="/asae-logo.svg" alt="ASAE" className="h-8 w-auto" />
-              <div className="border-l border-slate-200 pl-4">
+          <div className="max-w-2xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+            <div className="flex items-center gap-4 min-w-0">
+              <img src="/asae-logo.svg" alt="ASAE" className="h-8 w-auto shrink-0" />
+              <div className="border-l border-slate-200 pl-4 min-w-0">
                 <div className="text-xs uppercase tracking-widest text-slate-400 font-medium">AI Readiness Survey</div>
                 <div className="text-xs text-slate-400">{SURVEY_VERSION}</div>
               </div>
             </div>
             {step !== "intro" && (
-              <div className="flex items-center gap-3">
-                <div className="w-32 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="flex-1 sm:flex-none sm:w-32 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                   <div className="h-full bg-slate-700 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
                 </div>
-                <span className="text-xs text-slate-400">{progress}%</span>
+                <span className="text-xs text-slate-400 tabular-nums shrink-0">{progress}%</span>
               </div>
             )}
           </div>

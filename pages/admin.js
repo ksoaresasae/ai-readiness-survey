@@ -156,15 +156,15 @@ export default function Admin() {
       <Head><title>Admin — AI Readiness Survey</title></Head>
       <div className="min-h-screen bg-slate-50">
         <div className="bg-white border-b border-slate-200">
-          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <img src="/asae-logo.svg" alt="ASAE" className="h-8 w-auto" />
-              <div className="border-l border-slate-200 pl-4">
+          <div className="max-w-5xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-4 min-w-0">
+              <img src="/asae-logo.svg" alt="ASAE" className="h-8 w-auto shrink-0" />
+              <div className="border-l border-slate-200 pl-4 min-w-0">
                 <div className="text-xs uppercase tracking-widest text-slate-400 font-medium">Survey Admin</div>
               </div>
             </div>
             {authed && (
-              <div className="flex gap-3">
+              <div className="flex gap-3 shrink-0">
                 <button onClick={refresh} disabled={loading}
                   className="px-4 py-1.5 text-sm border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors">
                   {loading ? "Refreshing…" : "↻ Refresh"}
