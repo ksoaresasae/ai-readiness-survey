@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Head from "next/head";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { sections } from "../lib/surveyData";
@@ -101,7 +101,12 @@ export default function Admin() {
   const [authError, setAuthError] = useState(false);
   const [responses, setResponses] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [activeSection, setActiveSection] = useState(sections[0].id);
+  const [activeTab, setActiveTab] = useState(sections[0].id);
+  const [assessment, setAssessment] = useState(null);
+  const [assessmentLoaded, setAssessmentLoaded] = useState(false);
+  const [assessmentLoading, setAssessmentLoading] = useState(false);
+  const [assessmentRunning, setAssessmentRunning] = useState(false);
+  const [assessmentError, setAssessmentError] = useState(null);
 
   const login = async () => {
     setLoading(true);
@@ -135,7 +140,54 @@ export default function Admin() {
     setLoading(false);
   };
 
-  const currentSection = sections.find(s => s.id === activeSection);
+  const TABS = [
+    ...sections.map(s => ({ id: s.id, label: s.title })),
+    { id: "__open", label: "Open-ended" },
+    { id: "__assessment", label: "Organizational Assessment" },
+  ];
+  const sectionTab = sections.find(s => s.id === activeTab);
+
+  // Minimal, HTML-safe markdown for the AI-generated assessment text.
+  const renderMarkdown = (text) =>
+    (text || "")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\n- /g, "<br/>• ")
+      .replace(/\n/g, "<br/>");
+
+  const loadAssessment = async () => {
+    setAssessmentLoading(true);
+    try {
+      const res = await fetch("/api/assess", { headers: { "x-admin-key": password } });
+      const data = await res.json();
+      if (res.ok) setAssessment(data.assessment || null);
+    } catch (e) {}
+    setAssessmentLoading(false);
+    setAssessmentLoaded(true);
+  };
+
+  const runAssessment = async () => {
+    setAssessmentRunning(true);
+    setAssessmentError(null);
+    try {
+      const res = await fetch("/api/assess", { method: "POST", headers: { "x-admin-key": password } });
+      const data = await res.json();
+      if (res.ok) setAssessment(data.assessment || null);
+      else setAssessmentError(data.error || "Could not generate the assessment.");
+    } catch (e) {
+      setAssessmentError("Could not generate the assessment.");
+    }
+    setAssessmentRunning(false);
+    setAssessmentLoaded(true);
+  };
+
+  // Lazy-load the saved assessment the first time the tab is opened.
+  useEffect(() => {
+    if (authed && activeTab === "__assessment" && !assessmentLoaded && !assessmentLoading) {
+      loadAssessment();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed, activeTab]);
 
   // Department breakdown
   const deptCounts = {};
@@ -241,49 +293,103 @@ export default function Admin() {
                 </div>
               </div>
 
-              {/* Section tabs */}
+              {/* Tabs: survey sections + open-ended + organizational assessment */}
               <div>
                 <div className="flex gap-2 flex-wrap mb-6">
-                  {sections.map(s => (
-                    <button key={s.id} onClick={() => setActiveSection(s.id)}
+                  {TABS.map(t => (
+                    <button key={t.id} onClick={() => setActiveTab(t.id)}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        activeSection === s.id ? "bg-slate-800 text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-400"
+                        activeTab === t.id ? "bg-slate-800 text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-400"
                       }`}>
-                      {s.title}
+                      {t.label}
                     </button>
                   ))}
                 </div>
 
-                <div className="space-y-4">
-                  {currentSection.questions.map(q =>
-                    q.type === "scale"
-                      ? <ScaleChart key={q.id} question={q} responses={responses} />
-                      : <ChoiceChart key={q.id} question={q} responses={responses} />
-                  )}
-                </div>
-              </div>
-
-              {/* Open-ended responses */}
-              <div className="space-y-4">
-                <h3 className="text-base font-semibold text-slate-800">Open-ended Responses</h3>
-                {[
-                  { id: "open1", text: "Work task where AI could help" },
-                  { id: "open2", text: "What leadership should better understand" },
-                ].map(q => (
-                  <div key={q.id} className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
-                    <h4 className="text-sm font-semibold text-slate-700">{q.text}</h4>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {responses.filter(r => r.open_answers?.[q.id]).map((r, i) => (
-                        <div key={i} className="text-sm text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
-                          "{r.open_answers[q.id]}"
-                        </div>
-                      ))}
-                      {responses.filter(r => r.open_answers?.[q.id]).length === 0 && (
-                        <p className="text-sm text-slate-400 italic">No responses yet.</p>
-                      )}
-                    </div>
+                {/* Section charts */}
+                {sectionTab && (
+                  <div className="space-y-4">
+                    {sectionTab.questions.map(q =>
+                      q.type === "scale"
+                        ? <ScaleChart key={q.id} question={q} responses={responses} />
+                        : <ChoiceChart key={q.id} question={q} responses={responses} />
+                    )}
                   </div>
-                ))}
+                )}
+
+                {/* Open-ended responses */}
+                {activeTab === "__open" && (
+                  <div className="space-y-4">
+                    {[
+                      { id: "open1", text: "Work task where AI could help" },
+                      { id: "open2", text: "What leadership should better understand" },
+                    ].map(q => {
+                      const answers = responses.filter(r => r.open_answers?.[q.id]);
+                      return (
+                        <div key={q.id} className="bg-white border border-slate-200 rounded-xl p-5 space-y-3">
+                          <h4 className="text-sm font-semibold text-slate-700">
+                            {q.text} <span className="text-slate-400 font-normal">({answers.length})</span>
+                          </h4>
+                          <div className="space-y-2 max-h-96 overflow-y-auto">
+                            {answers.map((r, i) => (
+                              <div key={i} className="text-sm text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
+                                "{r.open_answers[q.id]}"
+                              </div>
+                            ))}
+                            {answers.length === 0 && (
+                              <p className="text-sm text-slate-400 italic">No responses yet.</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Organizational Assessment */}
+                {activeTab === "__assessment" && (
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                      <div>
+                        <h3 className="text-base font-semibold text-slate-800">Organizational Assessment</h3>
+                        <p className="text-sm text-slate-500 mt-1 max-w-xl">
+                          An AI synthesis of every response — quantitative results plus open-ended comments. It runs only when you ask, and the result is saved until you re-run it.
+                        </p>
+                      </div>
+                      <button onClick={runAssessment} disabled={assessmentRunning}
+                        className="shrink-0 px-4 py-2 text-sm bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-60">
+                        {assessmentRunning ? "Analyzing…" : assessment ? "↻ Re-run" : "Run assessment"}
+                      </button>
+                    </div>
+
+                    {assessmentError && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">{assessmentError}</div>
+                    )}
+
+                    {assessmentRunning && (
+                      <div className="flex items-center gap-3 text-slate-500 text-sm">
+                        <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
+                        Analyzing all responses — this can take up to a minute.
+                      </div>
+                    )}
+
+                    {assessment ? (
+                      <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-3">
+                        <div className="text-xs text-slate-400 border-b border-slate-100 pb-3">
+                          Generated {new Date(assessment.created_at).toLocaleString()} · based on {assessment.response_count} {assessment.response_count === 1 ? "response" : "responses"}{assessment.survey_version ? ` · ${assessment.survey_version}` : ""}
+                        </div>
+                        <div className="text-sm text-slate-700 leading-relaxed"
+                          dangerouslySetInnerHTML={{ __html: renderMarkdown(assessment.content) }} />
+                      </div>
+                    ) : assessmentLoading ? (
+                      <p className="text-sm text-slate-400">Loading…</p>
+                    ) : !assessmentRunning ? (
+                      <div className="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-8 text-center text-sm text-slate-500">
+                        No assessment has been run yet. Click “Run assessment” to generate one from the current {responses.length} {responses.length === 1 ? "response" : "responses"}.
+                      </div>
+                    ) : null}
+                  </div>
+                )}
               </div>
 
             </div>

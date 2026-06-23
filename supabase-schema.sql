@@ -16,3 +16,21 @@ create policy "No public access"
   on responses
   for all
   using (false);
+
+-- Organizational assessment runs (AI-generated summaries over all responses).
+-- Each row is one on-demand run; the admin view shows the most recent.
+create table org_assessments (
+  id uuid default gen_random_uuid() primary key,
+  content text not null,
+  response_count integer not null default 0,
+  survey_version text,
+  created_at timestamptz not null default now()
+);
+
+-- Disable public read access (admin API uses service role key)
+alter table org_assessments enable row level security;
+
+create policy "No public access (assessments)"
+  on org_assessments
+  for all
+  using (false);
